@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Akıllı Sera Paneli</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --kart:#fff; --yazi:#1d2530; --soluk:#6b7684; --cizgi:#e3e7ec;
+    --sicak:#e8590c; --nem:#1c7ed6; --hava:#0ca678; --iyi:#2f9e44; --uyari:#f08c00; --kotu:#e03131;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#11151a; --kart:#1a2027; --yazi:#e8edf2; --soluk:#8d99a6; --cizgi:#2a323b; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--yazi);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:860px;margin:0 auto;padding:20px 16px 40px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+  h1{font-size:1.35rem;margin:0}
+  .rozet{font-size:.85rem;padding:5px 10px;border-radius:999px;background:var(--kart);border:1px solid var(--cizgi);white-space:nowrap}
+  .rozet::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--soluk)}
+  .rozet.cevrimici::before{background:var(--iyi)} .rozet.cevrimdisi::before{background:var(--kotu)}
+  .izgara{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .kart{background:var(--kart);border:1px solid var(--cizgi);border-radius:14px;padding:18px}
+  .etiket{color:var(--soluk);font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
+  .deger{font-size:3rem;font-weight:700;line-height:1.1;margin:6px 0;font-variant-numeric:tabular-nums}
+  .sicak .deger{color:var(--sicak)} .nem .deger{color:var(--nem)} .hava .deger{color:var(--hava)}
+  .alt{color:var(--soluk);font-size:.9rem}
+  .uyari{display:none;margin:14px 0;padding:14px 16px;border-radius:12px;background:color-mix(in srgb,var(--uyari) 15%,var(--kart));border:1px solid var(--uyari);align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .uyari.goster{display:flex}
+  h2{font-size:1.05rem;margin:26px 0 10px}
+  .cihaz{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .cihaz h3{margin:0 0 4px;font-size:1.1rem}
+  .led{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--cizgi);margin-right:6px;vertical-align:middle}
+  .led.acik{background:var(--iyi);box-shadow:0 0 10px var(--iyi)}
+  button{font:inherit;border:0;border-radius:10px;padding:10px 16px;cursor:pointer;background:var(--yazi);color:var(--bg);font-weight:600}
+  button.ikincil{background:transparent;color:var(--yazi);border:1px solid var(--cizgi)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .mod{display:flex;background:var(--kart);border:1px solid var(--cizgi);border-radius:12px;padding:4px;width:fit-content}
+  .mod button{background:transparent;color:var(--soluk)}
+  .mod button.secili{background:var(--yazi);color:var(--bg)}
+  label{display:block;font-size:.9rem;color:var(--soluk);margin-bottom:6px}
+  input[type=number]{font:inherit;width:100%;padding:9px 10px;border-radius:9px;border:1px solid var(--cizgi);background:var(--bg);color:var(--yazi)}
+  .satir{display:flex;gap:10px;align-items:end}
+  .not{color:var(--soluk);font-size:.85rem;margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Akıllı Sera Paneli</h1>
+    <span id="baglanti" class="rozet">Bağlanıyor…</span>
+  </header>
+
+  <div class="izgara">
+    <div class="kart sicak">
+      <div class="etiket">Sıcaklık</div>
+      <div class="deger" id="sicaklik">--</div>
+      <div class="alt">Eşik: <span id="sEsikYazi">--</span> °C</div>
+    </div>
+    <div class="kart nem">
+      <div class="etiket">Toprak nemi</div>
+      <div class="deger" id="nem">--</div>
+      <div class="alt">Sulama eşiği: %<span id="nEsikYazi">--</span> <span id="ham" style="opacity:.6"></span></div>
+    </div>
+    <div class="kart hava">
+      <div class="etiket">Hava nemi</div>
+      <div class="deger" id="havaNem">--</div>
+      <div class="alt">Ortamdaki bağıl nem (DHT11)</div>
+    </div>
+  </div>
+
+  <div class="uyari" id="sUyari">
+    <span>🌡️ Sıcaklık eşiği aştı.</span>
+    <button onclick="manuelAc('klima')">Klimayı aç</button>
+  </div>
+  <div class="uyari" id="nUyari">
+    <span>🌱 Toprak kurudu, sulama gerekiyor.</span>
+    <button onclick="manuelAc('sulama')">Sulamayı başlat</button>
+  </div>
+
+  <h2>Çalışma modu</h2>
+  <div class="mod">
+    <button id="modOto" onclick="kaydet({mod:'otomatik'})">Otomatik</button>
+    <button id="modMan" onclick="kaydet({mod:'manuel'})">Manuel</button>
+  </div>
+  <p class="not" id="modNot"></p>
+
+  <h2>Cihazlar</h2>
+  <div class="izgara">
+    <div class="kart cihaz">
+      <div><h3>Klima</h3><span class="led" id="klimaLed"></span><span id="klimaDurum">--</span></div>
+      <button id="klimaBtn" onclick="degistir('klima')">Aç</button>
+    </div>
+    <div class="kart cihaz">
+      <div><h3>Sulama</h3><span class="led" id="sulamaLed"></span><span id="sulamaDurum">--</span></div>
+      <button id="sulamaBtn" onclick="degistir('sulama')">Aç</button>
+    </div>
+  </div>
+
+  <h2>Eşik değerleri</h2>
+  <div class="kart">
+    <div class="izgara">
+      <div><label for="sEsik">Sıcaklık eşiği (°C)</label><input id="sEsik" type="number" step="0.5"></div>
+      <div><label for="nEsik">Sulama eşiği – toprak nemi bunun altına düşünce (%)</label><input id="nEsik" type="number" step="1"></div>
+    </div>
+    <div class="satir" style="margin-top:12px">
+      <button class="ikincil" onclick="esikKaydet()">Eşikleri kaydet</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ================== AYAR ==================
+// ESP32 kodundakiyle AYNI Firebase adresi (sonunda / olmadan)
+const FIREBASE_URL = "https://PROJE-ADIN-default-rtdb.europe-west1.firebasedatabase.app"; // kendi Firebase adresin
+const YENILEME_MS = 2000;
+// ==========================================
+
+let veri = { sensor:{}, kontrol:{}, durum:{} };
+let esiklerDolduruldu = false;
+const $ = id => document.getElementById(id);
+
+// Tüm veritabanını tek istekte oku
+async function yenile(){
+  try{
+    const r = await fetch(FIREBASE_URL + "/.json?t=" + Date.now());
+    if(!r.ok) throw new Error(r.status);
+    veri = Object.assign({ sensor:{}, kontrol:{}, durum:{} }, await r.json() || {});
+    ciz();
+  }catch(e){
+    $("baglanti").textContent = "Sunucuya ulaşılamıyor";
+    $("baglanti").className = "rozet cevrimdisi";
+  }
+}
+
+// Sadece verilen alanları güncelle (PATCH)
+async function kaydet(alanlar){
+  Object.assign(veri.kontrol, alanlar); ciz();   // arayüz hemen tepki versin
+  await fetch(FIREBASE_URL + "/kontrol.json", {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(alanlar)
+  });
+  yenile();
+}
+
+function degistir(cihaz){
+  const gercek = !!veri.durum[cihaz];
+  kaydet({ [cihaz]: !gercek });
+}
+function manuelAc(cihaz){ kaydet({ mod:"manuel", [cihaz]: true }); }
+function esikKaydet(){
+  const s = parseFloat($("sEsik").value), n = parseFloat($("nEsik").value);
+  if(isNaN(s) || isNaN(n)) return alert("Geçerli sayı gir.");
+  kaydet({ sicaklikEsik:s, nemEsik:n });
+}
+
+function ciz(){
+  const { sensor:s, kontrol:k, durum:d } = veri;
+  const sEsik = k.sicaklikEsik ?? 28, nEsik = k.nemEsik ?? 30;
+  const otomatik = (k.mod ?? "otomatik") === "otomatik";
+
+  // Ölçümler
+  $("sicaklik").textContent = s.sicaklik != null ? s.sicaklik.toFixed(1) + "°C" : "--";
+  $("nem").textContent      = s.nem != null ? "%" + s.nem.toFixed(0) : "--";
+  $("ham").textContent      = s.hamNem != null ? "(ham: " + s.hamNem + ")" : "";
+  $("havaNem").textContent  = s.havaNem != null ? "%" + s.havaNem.toFixed(0) : "--";
+  $("sEsikYazi").textContent = sEsik; $("nEsikYazi").textContent = nEsik;
+
+  // Çevrimiçi mi? (son ölçüm 20 sn'den yeniyse)
+  const yas = s.zaman ? (Date.now() - s.zaman) / 1000 : Infinity;
+  const online = yas < 20;
+  $("baglanti").textContent = online ? "ESP32 çevrimiçi" : "ESP32 çevrimdışı";
+  $("baglanti").className = "rozet " + (online ? "cevrimici" : "cevrimdisi");
+
+  // Uyarılar (manuel modda ve cihaz kapalıyken öneri göster)
+  $("sUyari").classList.toggle("goster", !otomatik && s.sicaklik != null && s.sicaklik >= sEsik && !d.klima);
+  $("nUyari").classList.toggle("goster", !otomatik && s.nem != null && s.nem <= nEsik && !d.sulama);
+
+  // Mod
+  $("modOto").classList.toggle("secili", otomatik);
+  $("modMan").classList.toggle("secili", !otomatik);
+  $("modNot").textContent = otomatik
+    ? "ESP32 eşiklere göre cihazları kendisi açıp kapatıyor. Elle kontrol için Manuel'e geç."
+    : "Cihazları sen kontrol ediyorsun. Eşik aşılınca burada öneri çıkar.";
+
+  // Cihazlar: gösterilen durum ESP32'nin bildirdiği GERÇEK durum
+  for(const c of ["klima","sulama"]){
+    const acik = !!d[c];
+    $(c+"Led").classList.toggle("acik", acik);
+    $(c+"Durum").textContent = acik ? (c==="sulama" ? "Sulanıyor" : "Açık") : "Kapalı";
+    $(c+"Btn").textContent = acik ? (c==="sulama" ? "Durdur" : "Kapat") : (c==="sulama" ? "Sula" : "Aç");
+    $(c+"Btn").disabled = otomatik;
+  }
+
+  // Eşik kutularını ilk açılışta doldur (kullanıcı yazarken ezme)
+  if(!esiklerDolduruldu && k.sicaklikEsik != null){
+    $("sEsik").value = sEsik; $("nEsik").value = nEsik; esiklerDolduruldu = true;
+  }
+}
+
+yenile();
+setInterval(yenile, YENILEME_MS);
+</script>
+</body>
+</html>

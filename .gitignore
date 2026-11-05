@@ -1,0 +1,5 @@
+# PlatformIO derleme dosyaları
+.pio/
+.vscode/
+# Gizli bilgiler (Wi-Fi şifresi, Telegram token, Firebase adresi)
+secrets.h
