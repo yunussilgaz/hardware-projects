@@ -21,3 +21,6 @@ ESP32 ve PlatformIO (Arduino framework) ile yaptığım staj çalışmaları. He
 2. **File → Open Folder** ile çalıştırmak istediğin proje klasörünü aç (ana klasörü değil).
 3. Wi-Fi / Telegram / Firebase kullanan projelerde `include/secrets.example.h` dosyasını **`include/secrets.h`** adıyla kopyala ve kendi bilgilerinle doldur. `secrets.h` `.gitignore` içinde olduğu için GitHub'a yüklenmez.
 4. **Upload** ile ESP32'ye yükle, **Monitor** ile Serial çıktısını izle (115200 baud).
+
+## Yapay zekâ kullanımı
+Bu projelerdeki kodlar Claude (yapay zekâ asistanı) yardımıyla yazıldı. Donanım kurulumu, devre bağlantıları, ölçümler, testler ve hata ayıklama tarafımdan yapıldı.
